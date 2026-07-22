@@ -2843,25 +2843,28 @@ function renderAccountTab() {
     if (!btn || !nav) return;
 
     function openMenu() {
-        nav.style.display = 'flex';
+        nav.classList.add('open');
         nav.classList.add('active');
         btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
         btn.setAttribute('aria-expanded', 'true');
     }
 
     function closeMenu() {
-        nav.style.display = 'none';
+        nav.classList.remove('open');
         nav.classList.remove('active');
         btn.innerHTML = '<i class="fa-solid fa-bars"></i>';
         btn.setAttribute('aria-expanded', 'false');
     }
 
     function toggleMenu(e) {
-        if (e) e.stopPropagation();
-        if (nav.style.display === 'none' || !nav.style.display) {
-            openMenu();
-        } else {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (nav.classList.contains('open') || nav.classList.contains('active')) {
             closeMenu();
+        } else {
+            openMenu();
         }
     }
 
@@ -2871,18 +2874,19 @@ function renderAccountTab() {
     nav.addEventListener('click', (e) => {
         const linkOrBtn = e.target.closest('a, button');
         if (linkOrBtn) {
-            // Short delay if clicking QR code button so modal opens cleanly
-            setTimeout(closeMenu, 100);
+            setTimeout(closeMenu, 150);
         }
     });
 
     // Close menu when tapping outside the menu and header button
     document.addEventListener('click', (e) => {
-        if (nav.style.display === 'flex' && !nav.contains(e.target) && !btn.contains(e.target)) {
+        if ((nav.classList.contains('open') || nav.classList.contains('active')) &&
+            !nav.contains(e.target) && !btn.contains(e.target)) {
             closeMenu();
         }
     });
 })();
+
 
 
 

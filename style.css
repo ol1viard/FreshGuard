@@ -4065,18 +4065,27 @@ body.dark-theme .photo-upload-zone:hover {
         height: calc(100vh - 68px) !important;
         background-color: var(--bg-card) !important;
         border-right: 1px solid var(--border-color) !important;
-        box-shadow: 8px 0 25px rgba(0, 0, 0, 0.2) !important;
+        box-shadow: 8px 0 25px rgba(0, 0, 0, 0.25) !important;
         padding: 24px 20px !important;
-        display: flex !important;
         flex-direction: column !important;
         gap: 18px !important;
         z-index: 99999 !important;
-        animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        transform: translateX(-100%);
+        opacity: 0;
+        visibility: hidden;
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease, visibility 0.28s ease !important;
     }
 
-    @keyframes slideInLeft {
-        from { transform: translateX(-100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+    .landing-mobile-nav.open,
+    .landing-mobile-nav.active {
+        transform: translateX(0) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: flex !important;
+    }
+
+    .landing-mobile-nav:not(.open):not(.active) {
+        display: none !important;
     }
 
     .landing-divider-line {
@@ -4089,6 +4098,7 @@ body.dark-theme .photo-upload-zone:hover {
         justify-content: center;
     }
 }
+
 
 
 
