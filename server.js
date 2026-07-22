@@ -49,7 +49,9 @@ const JWT_SECRET = 'freshguard-super-secret-key-12345!';
 app.use(express.json({ limit: '10mb' })); // support image uploads
 
 // Database Initialization
-const dbPath = path.join(__dirname, 'database.sqlite');
+const dbPath = process.env.VERCEL
+    ? path.join('/tmp', 'database.sqlite')
+    : path.join(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Failed to connect to SQLite database:', err);
@@ -956,6 +958,10 @@ app.get('*', (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
-    console.log(`FreshGuard server running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`FreshGuard server running at http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
