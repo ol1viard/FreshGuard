@@ -109,7 +109,7 @@ function getItemImage(name, customImage) {
     if (n.includes('milk') || n.includes('yogurt') || n.includes('dairy') || n.includes('cheese')) {
         return 'images/organic_milk.jpg';
     }
-    if (n.includes('banana') || n.includes('fruit') || n.includes('tropical')) {
+    if (n.includes('banana') || n.includes('berry') || n.includes('strawberry') || n.includes('apple') || n.includes('orange') || n.includes('fruit') || n.includes('tropical')) {
         return 'images/bananas.jpg';
     }
     if (n.includes('spinach') || n.includes('lettuce') || n.includes('green') || n.includes('veggie') || n.includes('produce') || n.includes('carrot') || n.includes('avocado')) {
