@@ -48,7 +48,15 @@ const JWT_SECRET = 'freshguard-super-secret-key-12345!';
 
 app.use(express.json({ limit: '10mb' })); // support image uploads
 
-// Database Initialization
+// Supabase Client Initialization (Optional if credentials provided in .env)
+const { createClient } = require('@supabase/supabase-js');
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
+    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+    console.log('Connected to Supabase at:', process.env.SUPABASE_URL);
+}
+
+// Database Initialization (SQLite local fallback)
 const dbPath = process.env.VERCEL
     ? path.join('/tmp', 'database.sqlite')
     : path.join(__dirname, 'database.sqlite');
