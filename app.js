@@ -2833,4 +2833,56 @@ function renderAccountTab() {
     }
 })();
 
+// ===========================================================================
+// LANDING MOBILE MENU TOGGLE & BACKDROP HANDLER
+// ===========================================================================
+(function initLandingMobileMenu() {
+    const btn = document.getElementById('btn-landing-mobile-menu');
+    const nav = document.getElementById('landing-mobile-nav');
+
+    if (!btn || !nav) return;
+
+    function openMenu() {
+        nav.style.display = 'flex';
+        nav.classList.add('active');
+        btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        btn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeMenu() {
+        nav.style.display = 'none';
+        nav.classList.remove('active');
+        btn.innerHTML = '<i class="fa-solid fa-bars"></i>';
+        btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleMenu(e) {
+        if (e) e.stopPropagation();
+        if (nav.style.display === 'none' || !nav.style.display) {
+            openMenu();
+        } else {
+            closeMenu();
+        }
+    }
+
+    btn.addEventListener('click', toggleMenu);
+
+    // Close menu when tapping any link or button inside the mobile menu
+    nav.addEventListener('click', (e) => {
+        const linkOrBtn = e.target.closest('a, button');
+        if (linkOrBtn) {
+            // Short delay if clicking QR code button so modal opens cleanly
+            setTimeout(closeMenu, 100);
+        }
+    });
+
+    // Close menu when tapping outside the menu and header button
+    document.addEventListener('click', (e) => {
+        if (nav.style.display === 'flex' && !nav.contains(e.target) && !btn.contains(e.target)) {
+            closeMenu();
+        }
+    });
+})();
+
+
 
