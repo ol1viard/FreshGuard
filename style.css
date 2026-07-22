@@ -3827,3 +3827,161 @@ body.dark-theme .photo-upload-zone:hover {
     gap: 8px;
     flex-shrink: 0;
 }
+
+/* ==========================================================================
+   QR CODE CARD & MODAL STYLES
+   ========================================================================== */
+.about-qr-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.about-qr-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    border-color: var(--color-primary);
+}
+
+.about-qr-img-wrapper {
+    width: 48px;
+    height: 48px;
+    padding: 3px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.about-qr-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.about-qr-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.about-qr-label {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.about-qr-label i {
+    color: var(--color-primary);
+}
+
+.about-qr-desc {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+/* Modal Specific QR Box */
+.qr-modal-card {
+    background: var(--bg-card);
+    border-radius: 24px;
+    padding: 32px 28px;
+    max-width: 420px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: modalPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPopIn {
+    from { opacity: 0; transform: scale(0.85) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.qr-modal-header {
+    margin-bottom: 20px;
+}
+
+.qr-modal-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: rgba(46, 125, 96, 0.12);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    margin: 0 auto 14px auto;
+}
+
+.qr-modal-header h3 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--color-text);
+    margin-bottom: 6px;
+}
+
+.qr-modal-header p {
+    font-size: 0.88rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+.qr-code-display-box {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    border: 2px dashed var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+.qr-code-modal-img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.qr-url-badge {
+    margin-top: 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #4b5563;
+    background: #f3f4f6;
+    padding: 6px 14px;
+    border-radius: 20px;
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.qr-modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+

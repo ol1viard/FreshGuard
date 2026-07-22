@@ -2767,3 +2767,65 @@ function renderAccountTab() {
         if (picFallback) picFallback.style.display = 'block';
     }
 }
+
+// ===========================================================================
+// QR CODE MODAL HANDLERS
+// ===========================================================================
+(function initQRModal() {
+    const modal = document.getElementById('qr-modal-overlay');
+    const closeBtn = document.getElementById('btn-qr-modal-close');
+    const copyBtn = document.getElementById('btn-copy-qr-link');
+
+    function openQRModal() {
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeQRModal() {
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Attach click listeners to all QR triggers
+    const triggerIds = ['btn-landing-qr', 'landing-mobile-btn-qr', 'about-qr-card-trigger', 'btn-sidebar-qr'];
+    triggerIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                openQRModal();
+            });
+        }
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeQRModal);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeQRModal();
+        });
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            const appUrl = 'https://food-expiry-tracker-tau.vercel.app';
+            try {
+                await navigator.clipboard.writeText(appUrl);
+                const origHtml = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied to Clipboard!';
+                copyBtn.style.background = '#1e533e';
+                setTimeout(() => {
+                    copyBtn.innerHTML = origHtml;
+                    copyBtn.style.background = '';
+                }, 2500);
+            } catch (err) {
+                if (typeof showToast === 'function') {
+                    showToast('Copied: ' + appUrl, 'info');
+                } else {
+                    alert('Copied URL: ' + appUrl);
+                }
+            }
+        });
+    }
+})();
+
