@@ -2777,22 +2777,26 @@ function renderAccountTab() {
     const copyBtn = document.getElementById('btn-copy-qr-link');
 
     function openQRModal() {
-        if (modal) modal.style.display = 'flex';
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
     }
 
     function closeQRModal() {
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
     }
 
-    // Attach click listeners to all QR triggers
-    const triggerIds = ['btn-landing-qr', 'landing-mobile-btn-qr', 'about-qr-card-trigger', 'btn-sidebar-qr'];
-    triggerIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('click', (e) => {
-                e.preventDefault();
-                openQRModal();
-            });
+    // Global click listener for all QR triggers and cards (including touch devices)
+    document.addEventListener('click', function (e) {
+        const qrTarget = e.target.closest('#btn-landing-qr, #landing-mobile-btn-qr, #about-qr-card-trigger, .about-qr-card, .about-qr-img, .about-qr-img-wrapper, #btn-sidebar-qr, [data-open-qr]');
+        if (qrTarget) {
+            e.preventDefault();
+            e.stopPropagation();
+            openQRModal();
         }
     });
 
@@ -2828,4 +2832,5 @@ function renderAccountTab() {
         });
     }
 })();
+
 

@@ -3985,3 +3985,52 @@ body.dark-theme .photo-upload-zone:hover {
     width: 100%;
 }
 
+/* ==========================================================================
+   FIXED MODAL OVERLAY (FOR GOOGLE & QR MODALS)
+   ========================================================================== */
+.google-modal-overlay,
+#qr-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(18, 12, 12, 0.75) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    z-index: 999999 !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+#qr-modal-overlay.active,
+#qr-modal-overlay[style*="display: flex"],
+#qr-modal-overlay[style*="display:flex"] {
+    display: flex !important;
+}
+
+.landing-divider-line {
+    width: 1px;
+    height: 40px;
+    background: var(--border-color, #e5e7eb);
+    margin: 0 4px;
+}
+
+@media (max-width: 768px) {
+    .landing-divider-line {
+        display: none !important;
+    }
+    
+    .landing-hero-stats {
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+    }
+}
+
+
