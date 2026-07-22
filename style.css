@@ -3986,6 +3986,16 @@ body.dark-theme .photo-upload-zone:hover {
 }
 
 /* ==========================================================================
+   HIDE BOTTOM BAR & FLOATING FAB (USER REQUESTED REMOVAL)
+   ========================================================================== */
+.bottom-nav,
+.mobile-fab,
+#bottom-nav,
+#btn-mobile-fab {
+    display: none !important;
+}
+
+/* ==========================================================================
    FIXED MODAL OVERLAY (FOR GOOGLE & QR MODALS)
    ========================================================================== */
 .google-modal-overlay,
@@ -3997,10 +4007,10 @@ body.dark-theme .photo-upload-zone:hover {
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    background: rgba(18, 12, 12, 0.75) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    z-index: 999999 !important;
+    background: rgba(18, 12, 12, 0.85) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    z-index: 9999999 !important;
     display: none;
     align-items: center;
     justify-content: center;
@@ -4021,7 +4031,54 @@ body.dark-theme .photo-upload-zone:hover {
     margin: 0 4px;
 }
 
+/* ==========================================================================
+   MOBILE MEDIA QUERIES (LEFT-SIDE MENU & RESPONSIVE LAYOUT)
+   ========================================================================== */
 @media (max-width: 768px) {
+    .landing-header {
+        padding: 16px 5%;
+        justify-content: flex-start;
+        gap: 14px;
+    }
+
+    .landing-menu-mobile-btn {
+        display: flex !important;
+        margin-right: 4px;
+    }
+
+    .landing-logo {
+        font-size: 20px;
+    }
+
+    .landing-nav,
+    .landing-actions {
+        display: none !important;
+    }
+
+    /* Left Side Mobile Navigation Drawer */
+    .landing-mobile-nav {
+        position: fixed !important;
+        top: 68px !important;
+        left: 0 !important;
+        width: 280px !important;
+        max-width: 85vw !important;
+        height: calc(100vh - 68px) !important;
+        background-color: var(--bg-card) !important;
+        border-right: 1px solid var(--border-color) !important;
+        box-shadow: 8px 0 25px rgba(0, 0, 0, 0.2) !important;
+        padding: 24px 20px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 18px !important;
+        z-index: 99999 !important;
+        animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    @keyframes slideInLeft {
+        from { transform: translateX(-100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
     .landing-divider-line {
         display: none !important;
     }
@@ -4032,5 +4089,6 @@ body.dark-theme .photo-upload-zone:hover {
         justify-content: center;
     }
 }
+
 
 
