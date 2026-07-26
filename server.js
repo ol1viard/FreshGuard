@@ -81,6 +81,31 @@ function convertQueryToPg(query) {
     return query.replace(/\?/g, () => `$${i++}`);
 }
 
+// PostgreSQL lowercases unquoted column names. We map them back to camelCase for the frontend.
+const pgKeyMap = {
+    displayname: 'displayName',
+    resettoken: 'resetToken',
+    resettokenexpiry: 'resetTokenExpiry',
+    adminverifycode: 'adminVerifyCode',
+    adminverifystatus: 'adminVerifyStatus',
+    profilepic: 'profilePic',
+    lastattempt: 'lastAttempt',
+    alertsent: 'alertSent',
+    dateadded: 'dateAdded',
+    dateexpiry: 'dateExpiry',
+    imagedata: 'imageData',
+    datehandled: 'dateHandled'
+};
+
+function mapRow(row) {
+    if (!row) return row;
+    const mapped = {};
+    for (const key in row) {
+        mapped[pgKeyMap[key] || key] = row[key];
+    }
+    return mapped;
+}
+
 // Promise Wrappers (Supports both PostgreSQL and SQLite)
 const dbRun = async (query, params = []) => {
     if (pgPool) {
@@ -98,7 +123,7 @@ const dbRun = async (query, params = []) => {
 const dbGet = async (query, params = []) => {
     if (pgPool) {
         const result = await pgPool.query(convertQueryToPg(query), params);
-        return result.rows[0] || null;
+        return mapRow(result.rows[0]) || null;
     }
     return new Promise((resolve, reject) => {
         db.get(query, params, (err, row) => {
@@ -111,7 +136,7 @@ const dbGet = async (query, params = []) => {
 const dbAll = async (query, params = []) => {
     if (pgPool) {
         const result = await pgPool.query(convertQueryToPg(query), params);
-        return result.rows;
+        return result.rows.map(mapRow);
     }
     return new Promise((resolve, reject) => {
         db.all(query, params, (err, rows) => {
