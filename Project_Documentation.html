@@ -258,6 +258,13 @@ await dbRun(
 );
     </div>
 
+    <h2 class="subheading">3.3 Database Testing</h2>
+    <p>The SQLite database was tested by manually inserting sample product records with varying expiry dates to verify that all fields were correctly stored. Referential integrity was tested by attempting to delete a product that had associated history logs, confirming that the constraints correctly prevented orphaned records.</p>
+    <div class="image-container" style="text-align: center; margin: 1em 0;">
+        <img src="images/database_test.png" alt="Database Testing Results" style="max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    </div>
+    <div class="caption">Fig 3.3.1 Database Testing Results</div>
+
 
     <h1 class="chapter">CHAPTER FOUR: CONCLUSION AND RECOMMENDATIONS</h1>
     

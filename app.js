@@ -1188,8 +1188,12 @@ function refreshDashboard() {
         } else {
             const listToRender = expiringSoon.slice(0, 3);
             let avatarsHTML = listToRender.map(item => {
-                const img = getItemImage(item.name);
-                return `<div class="expiring-avatar"><img src="${img}" alt="${escHTML(item.name)}"></div>`;
+                const cat = CATEGORIES[item.category] || CATEGORIES.pantry;
+                if (item.imageData) {
+                    return `<div class="expiring-avatar"><img src="${item.imageData}" alt="${escHTML(item.name)}"></div>`;
+                } else {
+                    return `<div class="expiring-avatar" style="display: flex; align-items: center; justify-content: center; background-color: var(--bg-secondary); color: var(--color-primary);"><i class="${cat.icon}" style="font-size: 14px;"></i></div>`;
+                }
             }).join('');
             
             if (count > 3) {
@@ -1270,7 +1274,12 @@ function renderDashboardFeed(expiringSoon, items) {
     }
 
     list.innerHTML = recentItems.map(item => {
-        const img = getItemImage(item.name, item.imageData);
+        const hasImage = !!item.imageData;
+        const imgHtml = hasImage
+            ? `<div class="feed-card-image" style="width: 80px; height: 80px; flex-shrink: 0; overflow: hidden; border-radius: 8px; margin-right: 16px;">
+                    <img src="${item.imageData}" alt="${escHTML(item.name)}" style="width: 100%; height: 100%; object-fit: cover;">
+               </div>`
+            : '';
         
         // Determine freshness based on days remaining
         const dr = daysRemaining(item.dateExpiry);
@@ -1287,9 +1296,7 @@ function renderDashboardFeed(expiringSoon, items) {
 
         return `
             <div class="feed-card">
-                <div class="feed-card-image" style="width: 80px; height: 80px; flex-shrink: 0; overflow: hidden; border-radius: 8px; margin-right: 16px;">
-                    <img src="${img}" alt="${escHTML(item.name)}" style="width: 100%; height: 100%; object-fit: cover;">
-                </div>
+                ${imgHtml}
                 <div class="feed-card-content" style="flex: 1;">
                     <div class="feed-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                         <h4 style="margin: 0; font-size: 16px;">${escHTML(item.name)}</h4>
@@ -1380,14 +1387,17 @@ function renderInventoryGrid() {
             badgeText = `${item.dr}d left`;
         }
 
-        const img = getItemImage(item.name, item.imageData);
+        const hasImage = !!item.imageData;
+        const imgHtml = hasImage 
+            ? `<div class="food-card-image-wrapper">
+                    <img src="${item.imageData}" alt="${escHTML(item.name)}" class="food-card-img">
+               </div>`
+            : '';
 
         cardsHTML.push(`
-            <div class="food-card-premium">
+            <div class="food-card-premium ${hasImage ? '' : 'no-image'}">
                 <span class="card-badge ${badgeClass}">${badgeText}</span>
-                <div class="food-card-image-wrapper">
-                    <img src="${img}" alt="${escHTML(item.name)}" class="food-card-img">
-                </div>
+                ${imgHtml}
                 <span class="food-card-category">${cat.name}</span>
                 <h4 class="food-card-name" title="${escHTML(item.name)}">${escHTML(item.name)}</h4>
                 <span class="food-card-details">${item.qty} ${escHTML(item.unit)} &bull; ${item.storage}</span>

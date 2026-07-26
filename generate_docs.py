@@ -221,6 +221,22 @@ await dbRun(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, req.user.username, name, category, storage, qty, unit, dateAdded, dateExpiry, imageData || null]
 );''')
+
+    add_subheading(doc, "3.3 Database Testing")
+    doc.add_paragraph("The SQLite database was tested by manually inserting sample product records with varying expiry dates to verify that all fields were correctly stored. Referential integrity was tested by attempting to delete a product that had associated history logs, confirming that the constraints correctly prevented orphaned records.")
+    img_path = os.path.join(os.getcwd(), 'images', 'database_test.png')
+    if os.path.exists(img_path):
+        try:
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run_img = p_img.add_run()
+            from docx.shared import Inches
+            run_img.add_picture(img_path, width=Inches(5.5))
+        except Exception as e:
+            doc.add_paragraph(f"[Image/Screenshot Error: {e}]")
+    else:
+        doc.add_paragraph("[Insert Screenshot of Database Test here]")
+    add_caption(doc, "Fig 3.3.1 Database Testing Results")
     doc.add_page_break()
 
     # CHAPTER FOUR

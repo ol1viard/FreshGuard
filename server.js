@@ -48,47 +48,78 @@ const JWT_SECRET = 'freshguard-super-secret-key-12345!';
 
 app.use(express.json({ limit: '10mb' })); // support image uploads
 
-// Supabase Client Initialization (Optional if credentials provided in .env)
-const { createClient } = require('@supabase/supabase-js');
-let supabase = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-    console.log('Connected to Supabase at:', process.env.SUPABASE_URL);
+// Supabase / PostgreSQL Client Initialization (For Vercel / Production)
+const { Pool } = require('pg');
+let pgPool = null;
+
+if (process.env.DATABASE_URL) {
+    pgPool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+    console.log('Connected to PostgreSQL database (via DATABASE_URL).');
 }
 
 // Database Initialization (SQLite local fallback)
-const dbPath = process.env.VERCEL
-    ? path.join('/tmp', 'database.sqlite')
-    : path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Failed to connect to SQLite database:', err);
-    } else {
-        console.log('Connected to SQLite database at:', dbPath);
+let db = null;
+if (!pgPool) {
+    const dbPath = process.env.VERCEL
+        ? path.join('/tmp', 'database.sqlite')
+        : path.join(__dirname, 'database.sqlite');
+    db = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+            console.error('Failed to connect to SQLite database:', err);
+        } else {
+            console.log('Connected to SQLite database at:', dbPath);
+        }
+    });
+}
+
+// Helper to convert SQLite '?' parameters to PostgreSQL '$1, $2' parameters
+function convertQueryToPg(query) {
+    let i = 1;
+    return query.replace(/\?/g, () => `$${i++}`);
+}
+
+// Promise Wrappers (Supports both PostgreSQL and SQLite)
+const dbRun = async (query, params = []) => {
+    if (pgPool) {
+        const result = await pgPool.query(convertQueryToPg(query), params);
+        return { changes: result.rowCount };
     }
-});
-
-// SQLite Promise Wrappers
-const dbRun = (query, params = []) => new Promise((resolve, reject) => {
-    db.run(query, params, function(err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID, changes: this.changes });
+    return new Promise((resolve, reject) => {
+        db.run(query, params, function(err) {
+            if (err) reject(err);
+            else resolve({ id: this.lastID, changes: this.changes });
+        });
     });
-});
+};
 
-const dbGet = (query, params = []) => new Promise((resolve, reject) => {
-    db.get(query, params, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
+const dbGet = async (query, params = []) => {
+    if (pgPool) {
+        const result = await pgPool.query(convertQueryToPg(query), params);
+        return result.rows[0] || null;
+    }
+    return new Promise((resolve, reject) => {
+        db.get(query, params, (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
     });
-});
+};
 
-const dbAll = (query, params = []) => new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
+const dbAll = async (query, params = []) => {
+    if (pgPool) {
+        const result = await pgPool.query(convertQueryToPg(query), params);
+        return result.rows;
+    }
+    return new Promise((resolve, reject) => {
+        db.all(query, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
     });
-});
+};
 
 // Setup Tables & Seed Data
 async function initDb() {
