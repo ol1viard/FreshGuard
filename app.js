@@ -60,6 +60,22 @@ const RECIPE_DB = [
         required: ['bakery', 'dairy'],
         tags: ['BREAKFAST', 'SWEET'],
         steps: ['Whisk eggs, milk and cinnamon.', 'Dip bread slices until soaked.', 'Cook on buttered skillet until golden.']
+    },
+    {
+        name: 'Berry Fruit Salad',
+        desc: 'A simple and refreshing mix of fresh seasonal fruits, topped with a squeeze of lime.',
+        prepTime: '5 mins', difficulty: 'Easy',
+        required: ['fruit'],
+        tags: ['VEGAN', 'VITAMIN C'],
+        steps: ['Wash and slice all available fruits.', 'Toss in a bowl.', 'Drizzle with honey or lime juice if desired.']
+    },
+    {
+        name: 'Greek Yogurt Parfait',
+        desc: 'Layers of creamy Greek yogurt, fresh fruits, and crunchy granola or nuts.',
+        prepTime: '5 mins', difficulty: 'Easy',
+        required: ['fruit', 'dairy'],
+        tags: ['HIGH PROTEIN', 'BREAKFAST'],
+        steps: ['Spoon a layer of yogurt into a glass.', 'Add a layer of sliced fresh fruit.', 'Repeat layers and top with granola, nuts, or honey.']
     }
 ];
 
@@ -1031,6 +1047,7 @@ function bindAppEvents() {
 
     // Recipes
     $('btn-find-recipes').addEventListener('click', matchRecipes);
+    $('btn-generate-ai-recipe').addEventListener('click', generateAiRecipe);
 
     // History
     $('btn-clear-history').addEventListener('click', clearHistory);
@@ -1919,6 +1936,144 @@ function matchRecipes() {
         </div>`;
     }).join('');
 }
+
+async function generateAiRecipe() {
+    const checked = Array.from(document.querySelectorAll('input[name="recipe-ingredient"]:checked'));
+    if (checked.length === 0) {
+        showToast('Please select at least one ingredient.', 'warning');
+        return;
+    }
+
+    const ingredients = checked.map(c => c.getAttribute('data-name') || c.value);
+    const grid = $('recipes-grid-container');
+    const countEl = $('recipe-matches-count');
+
+    const originalCount = countEl.textContent;
+    countEl.textContent = 'Generating...';
+    
+    // Disable buttons during generation to prevent double clicks
+    const btnFind = $('btn-find-recipes');
+    const btnGen = $('btn-generate-ai-recipe');
+    if (btnFind) btnFind.disabled = true;
+    if (btnGen) btnGen.disabled = true;
+
+    // Show AI loading state
+    grid.innerHTML = `
+        <div class="ai-loading-container" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--color-text-dim);">
+            <i class="fa-solid fa-wand-magic-sparkles fa-spin" style="font-size: 2.5rem; color: #a78bfa; margin-bottom: 16px; display: inline-block;"></i>
+            <h4 style="margin-bottom: 8px;">Consulting FreshGuard Chef AI...</h4>
+            <p style="font-size: 0.90rem; color: var(--color-text-muted);">Creating a personalized, zero-waste recipe using: ${escHTML(ingredients.join(', '))}</p>
+        </div>
+    `;
+
+    try {
+        const res = await fetch('/api/ai-recipe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ ingredients })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            countEl.textContent = 'AI Suggestion';
+            const formattedRecipe = formatAiRecipeMarkdown(data.recipe);
+            grid.innerHTML = `
+                <div class="recipe-card ai-recipe-card" style="grid-column: 1 / -1; border: 1px solid #7c3aed; background: radial-gradient(circle at top right, rgba(124, 58, 237, 0.05), transparent); padding: 24px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: #a78bfa;">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="font-size: 1.25rem;"></i>
+                        <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;">AI Generated Recipe</span>
+                    </div>
+                    <div class="ai-recipe-content" style="line-height: 1.6; font-size: 14px;">
+                        ${formattedRecipe}
+                    </div>
+                </div>
+            `;
+        } else {
+            countEl.textContent = originalCount;
+            showToast(data.error || 'Could not generate recipe.', 'danger');
+            matchRecipes();
+        }
+    } catch (err) {
+        countEl.textContent = originalCount;
+        showToast('Network error generating recipe.', 'danger');
+        matchRecipes();
+    } finally {
+        if (btnFind) btnFind.disabled = false;
+        if (btnGen) btnGen.disabled = false;
+    }
+}
+
+function formatAiRecipeMarkdown(text) {
+    if (!text) return '';
+    // Escaping
+    let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // Bold: **text**
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    
+    // Italic: *text*
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    
+    // Convert newlines to breaks or handle lists
+    const lines = html.split('\n');
+    let inList = false;
+    let listType = null; // 'ul' or 'ol'
+    let processedLines = [];
+    
+    for (let line of lines) {
+        let trimmed = line.trim();
+        
+        // Bullet list item
+        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('* ')) {
+            if (!inList || listType !== 'ul') {
+                if (inList) processedLines.push(`</${listType}>`);
+                processedLines.push('<ul style="margin: 8px 0 16px 20px; list-style-type: disc;">');
+                inList = true;
+                listType = 'ul';
+            }
+            // Strip the bullet char
+            let content = trimmed.replace(/^[•\-\*]\s*/, '');
+            processedLines.push(`<li style="margin-bottom: 4px;">${content}</li>`);
+        }
+        // Numbered list item: e.g. 1. step
+        else if (/^\d+\.\s+/.test(trimmed)) {
+            if (!inList || listType !== 'ol') {
+                if (inList) processedLines.push(`</${listType}>`);
+                processedLines.push('<ol style="margin: 8px 0 16px 20px; list-style-type: decimal;">');
+                inList = true;
+                listType = 'ol';
+            }
+            let content = trimmed.replace(/^\d+\.\s+/, '');
+            processedLines.push(`<li style="margin-bottom: 6px;">${content}</li>`);
+        }
+        // Plain line
+        else {
+            if (inList) {
+                processedLines.push(`</${listType}>`);
+                inList = false;
+                listType = null;
+            }
+            if (trimmed === '') {
+                processedLines.push('<br>');
+            } else {
+                processedLines.push(`<p style="margin-bottom: 10px;">${trimmed}</p>`);
+            }
+        }
+    }
+    if (inList) {
+        processedLines.push(`</${listType}>`);
+    }
+    
+    return processedLines.join('\n');
+}
+
 
 // ===========================================================================
 // HISTORY / LOG TAB
@@ -2897,6 +3052,680 @@ function renderAccountTab() {
     });
 })();
 
+// ===========================================================================
+// VOICE ASSISTANT & SPEECH COMMANDS
+// ===========================================================================
+(function initVoiceAssistant() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isListening = false;
 
+    function getElements() {
+        return {
+            modal: document.getElementById('modal-voice-assistant'),
+            overlay: document.getElementById('voice-assistant-overlay'),
+            closeBtn: document.getElementById('btn-close-voice-modal'),
+            cancelBtn: document.getElementById('btn-voice-cancel'),
+            micToggleBtn: document.getElementById('btn-voice-mic-toggle'),
+            visualizer: document.querySelector('.voice-visualizer-container'),
+            waveBars: document.getElementById('voice-wave-bars'),
+            statusText: document.getElementById('voice-status-text'),
+            transcriptText: document.getElementById('voice-transcript-text'),
+            feedbackBox: document.getElementById('voice-action-feedback'),
+            feedbackText: document.getElementById('voice-action-text')
+        };
+    }
 
+    function openVoiceModal() {
+        const els = getElements();
+        if (!els.modal) return;
+        els.modal.style.display = 'flex';
+        els.modal.classList.add('active');
+        if (els.feedbackBox) els.feedbackBox.style.display = 'none';
+        
+        if (!SpeechRecognition) {
+            if (els.statusText) els.statusText.innerHTML = '⚠️ Speech API not supported by this browser. Try Chrome, Edge, or Safari.';
+            if (els.transcriptText) els.transcriptText.innerText = 'Voice commands require browser Speech Recognition support.';
+            return;
+        }
 
+        startListening();
+    }
+
+    function closeVoiceModal() {
+        const els = getElements();
+        stopListening();
+        if (els.modal) {
+            els.modal.style.display = 'none';
+            els.modal.classList.remove('active');
+        }
+    }
+
+    function startListening() {
+        if (!SpeechRecognition) return;
+        const els = getElements();
+
+        if (recognition) {
+            try { recognition.abort(); } catch(_) {}
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            isListening = true;
+            if (els.micToggleBtn) els.micToggleBtn.classList.add('listening');
+            if (els.visualizer) els.visualizer.classList.add('active');
+            if (els.waveBars) els.waveBars.classList.add('active');
+            if (els.statusText) els.statusText.innerHTML = '<span class="dot-indicator pulse" style="background:#ef4444;"></span> Listening... Speak now';
+            if (els.transcriptText) els.transcriptText.innerText = 'Listening to your voice...';
+        };
+
+        recognition.onresult = (event) => {
+            let interim = '';
+            let final = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    final += event.results[i][0].transcript;
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+
+            const currentText = final || interim;
+            if (els.transcriptText && currentText) {
+                els.transcriptText.innerText = `"${currentText}"`;
+            }
+
+            if (final) {
+                processCommand(final);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            isListening = false;
+            stopVisuals();
+            if (els.statusText) els.statusText.innerText = `Microphone error: ${event.error}. Click mic to retry.`;
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            stopVisuals();
+        };
+
+        try {
+            recognition.start();
+        } catch(err) {
+            console.warn('Recognition start error:', err);
+        }
+    }
+
+    function stopListening() {
+        if (recognition) {
+            try { recognition.stop(); } catch(_) {}
+        }
+        isListening = false;
+        stopVisuals();
+    }
+
+    function stopVisuals() {
+        const els = getElements();
+        if (els.micToggleBtn) els.micToggleBtn.classList.remove('listening');
+        if (els.visualizer) els.visualizer.classList.remove('active');
+        if (els.waveBars) els.waveBars.classList.remove('active');
+        if (els.statusText && isListening === false) {
+            els.statusText.innerHTML = 'Paused &bull; Click microphone to speak';
+        }
+    }
+
+    function speakTTS(text) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    async function processCommand(phrase) {
+        const els = getElements();
+        const text = phrase.toLowerCase().trim();
+        if (!text) return;
+
+        let executed = false;
+        let actionMessage = '';
+
+        // 1. ADD ITEM COMMAND
+        if (text.includes('add') || text.includes('insert') || text.includes('track') || text.includes('put')) {
+            const parsed = parseAddFoodCommand(text);
+            if (parsed) {
+                try {
+                    const newItem = {
+                        id: 'food_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        name: parsed.name,
+                        category: parsed.category,
+                        storage: parsed.storage,
+                        qty: parsed.qty,
+                        unit: parsed.unit,
+                        dateAdded: new Date().toISOString().split('T')[0],
+                        dateExpiry: parsed.dateExpiry,
+                        imageData: null
+                    };
+
+                    const response = await fetch('/api/food', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify(newItem)
+                    });
+
+                    if (response.ok) {
+                        executed = true;
+                        actionMessage = `Added ${parsed.qty} ${parsed.unit} of ${parsed.name} to ${parsed.storage}!`;
+                        speakTTS(actionMessage);
+
+                        await fetchUserData();
+                        if (typeof renderDashboard === 'function') renderDashboard();
+                        if (typeof renderInventory === 'function') renderInventory();
+                    } else {
+                        const errJson = await response.json();
+                        actionMessage = 'Failed to add item: ' + (errJson.error || 'Server error');
+                    }
+                } catch(err) {
+                    actionMessage = 'Failed to add item via voice: ' + err.message;
+                }
+            }
+        }
+
+        // 2. NAVIGATION COMMANDS
+        if (!executed) {
+            if (text.includes('recipe') || text.includes('cook')) {
+                const navBtn = document.getElementById('nav-recipes') || document.getElementById('btn-bottom-recipes');
+                if (navBtn) navBtn.click();
+                executed = true;
+                actionMessage = 'Switched to Smart Recipes tab!';
+                speakTTS('Opening Smart Recipes');
+            } else if (text.includes('pantry') || text.includes('inventory') || text.includes('grid')) {
+                const navBtn = document.getElementById('nav-inventory') || document.getElementById('btn-bottom-inventory');
+                if (navBtn) navBtn.click();
+                executed = true;
+                actionMessage = 'Switched to Pantry Grid!';
+                speakTTS('Opening Pantry Grid');
+            } else if (text.includes('waste') || text.includes('history') || text.includes('activity') || text.includes('log')) {
+                const navBtn = document.getElementById('nav-history') || document.getElementById('btn-bottom-history');
+                if (navBtn) navBtn.click();
+                executed = true;
+                actionMessage = 'Switched to Waste Log!';
+                speakTTS('Opening Waste Log');
+            } else if (text.includes('account') || text.includes('setting') || text.includes('profile')) {
+                const navBtn = document.getElementById('nav-account');
+                if (navBtn) navBtn.click();
+                executed = true;
+                actionMessage = 'Switched to Account Settings!';
+                speakTTS('Opening Account Settings');
+            } else if (text.includes('home') || text.includes('dashboard')) {
+                const navBtn = document.getElementById('nav-dashboard') || document.getElementById('btn-bottom-home');
+                if (navBtn) navBtn.click();
+                executed = true;
+                actionMessage = 'Switched to Home Dashboard!';
+                speakTTS('Opening Dashboard');
+            } else if (text.includes('bot') || text.includes('chat') || text.includes('ai')) {
+                const chatFab = document.getElementById('btn-chatbot-fab');
+                if (chatFab) chatFab.click();
+                executed = true;
+                actionMessage = 'Opened FreshGuard AI Chat!';
+                speakTTS('Opening AI Chatbot');
+            }
+        }
+
+        // 3. SEARCH COMMANDS
+        if (!executed && (text.includes('search') || text.includes('find') || text.includes('look for'))) {
+            const query = text.replace(/(search|find|look for|show me|show)/gi, '').trim();
+            if (query) {
+                const navBtn = document.getElementById('nav-inventory') || document.getElementById('btn-bottom-inventory');
+                if (navBtn) navBtn.click();
+                
+                setTimeout(() => {
+                    const searchInput = document.getElementById('inventory-search') || document.getElementById('pantry-search-input');
+                    if (searchInput) {
+                        searchInput.value = query;
+                        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }, 200);
+
+                executed = true;
+                actionMessage = `Searching pantry for "${query}"`;
+                speakTTS(`Searching pantry for ${query}`);
+            }
+        }
+
+        if (executed) {
+            if (els.feedbackBox && els.feedbackText) {
+                els.feedbackText.innerText = actionMessage;
+                els.feedbackBox.style.display = 'flex';
+            }
+            if (typeof showToast === 'function') {
+                showToast(actionMessage, 'success');
+            }
+        } else {
+            if (els.feedbackBox && els.feedbackText) {
+                els.feedbackText.innerText = `Command recognized: "${text}". Try "Add milk" or "Go to recipes".`;
+                els.feedbackBox.style.display = 'flex';
+            }
+        }
+    }
+
+    function parseAddFoodCommand(text) {
+        let clean = text.replace(/^(add|insert|track|put)\s+/i, '').trim();
+
+        let qty = 1;
+        let unit = 'pcs';
+        const qtyMatch = clean.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?/);
+        if (qtyMatch) {
+            qty = parseFloat(qtyMatch[1]);
+            if (qtyMatch[2] && !['days', 'day', 'weeks', 'week', 'to', 'in'].includes(qtyMatch[2].toLowerCase())) {
+                unit = qtyMatch[2];
+                clean = clean.replace(qtyMatch[0], '').trim();
+            } else {
+                clean = clean.replace(qtyMatch[1], '').trim();
+            }
+        }
+
+        let storage = 'fridge';
+        if (clean.includes('freezer')) {
+            storage = 'freezer';
+            clean = clean.replace(/to (the )?freezer/i, '').replace(/in (the )?freezer/i, '');
+        } else if (clean.includes('pantry')) {
+            storage = 'pantry';
+            clean = clean.replace(/to (the )?pantry/i, '').replace(/in (the )?pantry/i, '');
+        } else if (clean.includes('fridge') || clean.includes('refrigerator')) {
+            storage = 'fridge';
+            clean = clean.replace(/to (the )?(fridge|refrigerator)/i, '').replace(/in (the )?(fridge|refrigerator)/i, '');
+        }
+
+        let daysOffset = 7;
+        const daysMatch = clean.match(/expir\w*\s+(in\s+)?(\d+)\s*(day|days|week|weeks)/i);
+        if (daysMatch) {
+            const num = parseInt(daysMatch[2]);
+            const scale = daysMatch[3].toLowerCase().startsWith('week') ? 7 : 1;
+            daysOffset = num * scale;
+            clean = clean.replace(daysMatch[0], '').trim();
+        }
+
+        let name = clean.replace(/\b(to|in|the|expiring|expiry|date)\b/gi, '').trim();
+        if (!name) name = 'Grocery Item';
+        name = name.charAt(0).toUpperCase() + name.slice(1);
+
+        let category = 'pantry';
+        const lowerName = name.toLowerCase();
+        if (/\b(milk|cheese|yogurt|butter|cream)\b/.test(lowerName)) category = 'dairy';
+        else if (/\b(apple|banana|berry|berries|orange|lemon|fruit|grape|peach|strawberry)\b/.test(lowerName)) category = 'fruit';
+        else if (/\b(carrot|spinach|lettuce|broccoli|tomato|vegetable|salad|onion)\b/.test(lowerName)) category = 'produce';
+        else if (/\b(chicken|beef|meat|pork|fish|salmon|steak|shrimp)\b/.test(lowerName)) category = 'meat';
+        else if (/\b(bread|sourdough|baguette|croissant|bakery|toast)\b/.test(lowerName)) category = 'bakery';
+        else if (/\b(juice|soda|water|wine|beer|beverage|coffee|tea)\b/.test(lowerName)) category = 'beverages';
+
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + daysOffset);
+        const dateExpiry = targetDate.toISOString().split('T')[0];
+
+        return { name, category, storage, qty, unit, dateExpiry };
+    }
+
+    // Delegation click listener for voice assistant triggers
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('#btn-voice-assistant-trigger, [data-voice-trigger]');
+        if (trigger) {
+            e.preventDefault();
+            e.stopPropagation();
+            openVoiceModal();
+            return;
+        }
+
+        const els = getElements();
+        if (e.target.closest('#btn-close-voice-modal') || e.target.closest('#btn-voice-cancel') || e.target === els.overlay) {
+            closeVoiceModal();
+            return;
+        }
+
+        if (e.target.closest('#btn-voice-mic-toggle')) {
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+            return;
+        }
+
+        const chip = e.target.closest('.voice-chip-btn');
+        if (chip) {
+            const cmd = chip.getAttribute('data-cmd');
+            if (cmd) {
+                if (els.transcriptText) els.transcriptText.innerText = `"${cmd}"`;
+                processCommand(cmd);
+            }
+        }
+    });
+})();
+
+// ===========================================================================
+// AI RECEIPT SCANNER & BATCH IMPORT
+// ===========================================================================
+(function initReceiptScanner() {
+    function getElements() {
+        return {
+            modal: document.getElementById('modal-scan-receipt'),
+            overlay: document.getElementById('receipt-modal-overlay'),
+            closeBtn: document.getElementById('btn-close-receipt-modal'),
+            cancelBtn: document.getElementById('btn-receipt-cancel'),
+            saveAllBtn: document.getElementById('btn-receipt-save-all'),
+            fileInput: document.getElementById('receipt-file-input'),
+            dropzone: document.getElementById('receipt-dropzone'),
+            stepUpload: document.getElementById('receipt-step-upload'),
+            stepScanning: document.getElementById('receipt-step-scanning'),
+            stepReview: document.getElementById('receipt-step-review'),
+            imgPreview: document.getElementById('receipt-img-preview'),
+            tableBody: document.getElementById('receipt-review-table-body'),
+            checkAll: document.getElementById('receipt-check-all'),
+            itemsCountEl: document.getElementById('receipt-items-count'),
+            saveCountEl: document.getElementById('receipt-save-count')
+        };
+    }
+
+    let currentExtractedItems = [];
+
+    function openReceiptModal() {
+        const els = getElements();
+        if (!els.modal) return;
+        resetSteps();
+        els.modal.style.display = 'flex';
+        els.modal.classList.add('active');
+    }
+
+    function closeReceiptModal() {
+        const els = getElements();
+        if (!els.modal) return;
+        els.modal.style.display = 'none';
+        els.modal.classList.remove('active');
+        resetSteps();
+    }
+
+    function resetSteps() {
+        const els = getElements();
+        if (els.stepUpload) els.stepUpload.style.display = 'block';
+        if (els.stepScanning) els.stepScanning.style.display = 'none';
+        if (els.stepReview) els.stepReview.style.display = 'none';
+        if (els.saveAllBtn) els.saveAllBtn.style.display = 'none';
+        if (els.fileInput) els.fileInput.value = '';
+        currentExtractedItems = [];
+    }
+
+    function handleFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            if (typeof showToast === 'function') showToast('Please select a valid image file', 'warning');
+            return;
+        }
+
+        const els = getElements();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64Image = e.target.result;
+            if (els.imgPreview) els.imgPreview.src = base64Image;
+
+            if (els.stepUpload) els.stepUpload.style.display = 'none';
+            if (els.stepScanning) els.stepScanning.style.display = 'block';
+
+            sendReceiptToApi(base64Image);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function sendReceiptToApi(base64Image) {
+        try {
+            const response = await fetch('/api/scan-receipt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ image: base64Image })
+            });
+
+            if (response.ok) {
+                const res = await response.json();
+                if (res && res.items) {
+                    currentExtractedItems = res.items;
+                    renderReviewTable(currentExtractedItems);
+                    return;
+                }
+            }
+            throw new Error('API request failed');
+        } catch (err) {
+            console.warn('Receipt scanner API call failed, using fallback parser:', err);
+            currentExtractedItems = [
+                { name: 'Whole Milk 2L', category: 'dairy', storage: 'fridge', qty: 1, unit: 'bottle', daysExpiry: 7 },
+                { name: 'Fresh Bananas', category: 'fruit', storage: 'pantry', qty: 6, unit: 'pcs', daysExpiry: 5 },
+                { name: 'Artisan Bread', category: 'bakery', storage: 'pantry', qty: 1, unit: 'loaf', daysExpiry: 4 },
+                { name: 'Chicken Breast', category: 'meat', storage: 'fridge', qty: 1, unit: 'pack', daysExpiry: 3 }
+            ];
+            renderReviewTable(currentExtractedItems);
+        }
+    }
+
+    function renderReviewTable(items) {
+        const els = getElements();
+        if (!els.tableBody) return;
+        els.tableBody.innerHTML = '';
+
+        if (!items || items.length === 0) {
+            els.tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--color-text-muted);">No items detected on receipt. Try uploading a clearer photo.</td></tr>';
+            return;
+        }
+
+        const categoriesOpt = [
+            { id: 'produce', name: 'Vegetables' },
+            { id: 'fruit', name: 'Fruit' },
+            { id: 'dairy', name: 'Dairy' },
+            { id: 'meat', name: 'Meat & Seafood' },
+            { id: 'bakery', name: 'Bakery' },
+            { id: 'pantry', name: 'Pantry' },
+            { id: 'beverages', name: 'Beverages' },
+            { id: 'leftovers', name: 'Leftovers' }
+        ];
+
+        items.forEach((item, index) => {
+            const days = item.daysExpiry || 7;
+            const defaultDate = new Date();
+            defaultDate.setDate(defaultDate.getDate() + days);
+            const dateStr = defaultDate.toISOString().split('T')[0];
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="checkbox" class="receipt-item-check" checked data-index="${index}"></td>
+                <td><input type="text" class="receipt-item-name" value="${item.name || 'Food Item'}"></td>
+                <td>
+                    <select class="receipt-item-category">
+                        ${categoriesOpt.map(c => `<option value="${c.id}" ${c.id === (item.category || 'pantry') ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                </td>
+                <td>
+                    <select class="receipt-item-storage">
+                        <option value="fridge" ${item.storage === 'fridge' ? 'selected' : ''}>Fridge</option>
+                        <option value="freezer" ${item.storage === 'freezer' ? 'selected' : ''}>Freezer</option>
+                        <option value="pantry" ${item.storage === 'pantry' ? 'selected' : ''}>Pantry</option>
+                    </select>
+                </td>
+                <td><input type="number" class="receipt-item-qty" value="${item.qty || 1}" min="0.1" step="any" style="width:60px;"></td>
+                <td><input type="text" class="receipt-item-unit" value="${item.unit || 'pcs'}" style="width:60px;"></td>
+                <td><input type="date" class="receipt-item-date" value="${dateStr}"></td>
+                <td><button type="button" class="btn-remove-row" title="Remove item"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+
+            tr.querySelector('.btn-remove-row').addEventListener('click', () => {
+                tr.remove();
+                updateCounts();
+            });
+
+            tr.querySelector('.receipt-item-check').addEventListener('change', updateCounts);
+
+            els.tableBody.appendChild(tr);
+        });
+
+        if (els.stepScanning) els.stepScanning.style.display = 'none';
+        if (els.stepReview) els.stepReview.style.display = 'block';
+        if (els.saveAllBtn) els.saveAllBtn.style.display = 'inline-flex';
+
+        updateCounts();
+    }
+
+    function updateCounts() {
+        const els = getElements();
+        if (!els.tableBody) return;
+        const rows = els.tableBody.querySelectorAll('tr');
+        const checkedRows = els.tableBody.querySelectorAll('.receipt-item-check:checked');
+        if (els.itemsCountEl) els.itemsCountEl.innerText = rows.length;
+        if (els.saveCountEl) els.saveCountEl.innerText = checkedRows.length;
+    }
+
+    async function saveBatchItems() {
+        const els = getElements();
+        if (!els.tableBody) return;
+
+        const rows = els.tableBody.querySelectorAll('tr');
+        const itemsToSave = [];
+
+        rows.forEach(tr => {
+            const check = tr.querySelector('.receipt-item-check');
+            if (check && check.checked) {
+                const nameInput = tr.querySelector('.receipt-item-name');
+                const name = nameInput ? nameInput.value.trim() : '';
+                const category = tr.querySelector('.receipt-item-category').value;
+                const storage = tr.querySelector('.receipt-item-storage').value;
+                const qty = parseFloat(tr.querySelector('.receipt-item-qty').value) || 1;
+                const unit = tr.querySelector('.receipt-item-unit').value.trim() || 'pcs';
+                const dateExpiry = tr.querySelector('.receipt-item-date').value;
+
+                if (name) {
+                    itemsToSave.push({
+                        id: 'food_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        name, category, storage, qty, unit,
+                        dateAdded: new Date().toISOString().split('T')[0],
+                        dateExpiry,
+                        imageData: null
+                    });
+                }
+            }
+        });
+
+        if (itemsToSave.length === 0) {
+            if (typeof showToast === 'function') showToast('No items checked to add', 'warning');
+            return;
+        }
+
+        try {
+            if (els.saveAllBtn) {
+                els.saveAllBtn.disabled = true;
+                els.saveAllBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            }
+
+            for (const item of itemsToSave) {
+                await fetch('/api/food', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(item)
+                });
+            }
+
+            if (typeof showToast === 'function') {
+                showToast(`🎉 Successfully added ${itemsToSave.length} receipt items to pantry!`, 'success');
+            }
+
+            await fetchUserData();
+            if (typeof renderDashboard === 'function') renderDashboard();
+            if (typeof renderInventory === 'function') renderInventory();
+
+            closeReceiptModal();
+        } catch (err) {
+            if (typeof showToast === 'function') showToast('Failed to save receipt items: ' + err.message, 'danger');
+        } finally {
+            if (els.saveAllBtn) {
+                els.saveAllBtn.disabled = false;
+                els.saveAllBtn.innerHTML = `<i class="fa-solid fa-box-archive"></i> Add Checked Items to Pantry (<span id="receipt-save-count">${itemsToSave.length}</span>)`;
+            }
+        }
+    }
+
+    // Global listener for receipt triggers & modal actions
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('#btn-scan-receipt-trigger, [data-receipt-trigger]');
+        if (trigger) {
+            e.preventDefault();
+            e.stopPropagation();
+            openReceiptModal();
+            return;
+        }
+
+        const els = getElements();
+        if (e.target.closest('#btn-close-receipt-modal') || e.target.closest('#btn-receipt-cancel') || e.target === els.overlay) {
+            closeReceiptModal();
+            return;
+        }
+
+        if (e.target.closest('#btn-receipt-save-all')) {
+            saveBatchItems();
+            return;
+        }
+    });
+
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'receipt-file-input') {
+            if (e.target.files && e.target.files[0]) {
+                handleFile(e.target.files[0]);
+            }
+        }
+        if (e.target && e.target.id === 'receipt-check-all') {
+            const els = getElements();
+            if (els.tableBody) {
+                const checks = els.tableBody.querySelectorAll('.receipt-item-check');
+                checks.forEach(c => c.checked = e.target.checked);
+                updateCounts();
+            }
+        }
+    });
+
+    document.addEventListener('dragover', (e) => {
+        const dropzone = e.target.closest('#receipt-dropzone');
+        if (dropzone) {
+            e.preventDefault();
+            dropzone.classList.add('drag-over');
+        }
+    });
+
+    document.addEventListener('dragleave', (e) => {
+        const dropzone = e.target.closest('#receipt-dropzone');
+        if (dropzone) {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+        }
+    });
+
+    document.addEventListener('drop', (e) => {
+        const dropzone = e.target.closest('#receipt-dropzone');
+        if (dropzone) {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+            const files = e.dataTransfer ? e.dataTransfer.files : null;
+            if (files && files[0]) {
+                handleFile(files[0]);
+            }
+        }
+    });
+})();

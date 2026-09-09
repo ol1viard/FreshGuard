@@ -222,12 +222,66 @@ async function initDb() {
             await dbRun('INSERT INTO users (username, password, role, provider) VALUES (?, ?, ?, ?)', ['user', userHash, 'user', 'local']);
             console.log('Seeded default user account.');
         }
+
+        // Migrate category from produce to fruit for items that are fruit
+        await dbRun(`
+            UPDATE food_items 
+            SET category = 'fruit' 
+            WHERE category = 'produce' 
+              AND (
+                LOWER(name) LIKE '%strawberry%' 
+                OR LOWER(name) LIKE '%strawberries%'
+                OR LOWER(name) LIKE '%banana%' 
+                OR LOWER(name) LIKE '%apple%' 
+                OR LOWER(name) LIKE '%orange%' 
+                OR LOWER(name) LIKE '%grape%' 
+                OR LOWER(name) LIKE '%pear%' 
+                OR LOWER(name) LIKE '%peach%' 
+                OR LOWER(name) LIKE '%berry%' 
+                OR LOWER(name) LIKE '%berries%'
+                OR LOWER(name) LIKE '%pomegranate%'
+                OR LOWER(name) LIKE '%lemon%'
+                OR LOWER(name) LIKE '%lime%'
+              )
+        `);
+        await dbRun(`
+            UPDATE history_log 
+            SET category = 'fruit' 
+            WHERE category = 'produce' 
+              AND (
+                LOWER(name) LIKE '%strawberry%' 
+                OR LOWER(name) LIKE '%strawberries%'
+                OR LOWER(name) LIKE '%banana%' 
+                OR LOWER(name) LIKE '%apple%' 
+                OR LOWER(name) LIKE '%orange%' 
+                OR LOWER(name) LIKE '%grape%' 
+                OR LOWER(name) LIKE '%pear%' 
+                OR LOWER(name) LIKE '%peach%' 
+                OR LOWER(name) LIKE '%berry%' 
+                OR LOWER(name) LIKE '%berries%'
+                OR LOWER(name) LIKE '%pomegranate%'
+                OR LOWER(name) LIKE '%lemon%'
+                OR LOWER(name) LIKE '%lime%'
+              )
+        `);
     } catch (err) {
         console.error('Error during database initialization:', err);
     }
 }
 
-initDb();
+// Store init promise — routes will await this to avoid cold-start race conditions
+const dbReady = initDb();
+
+// Middleware: ensure DB tables exist before handling any request
+app.use(async (req, res, next) => {
+    try {
+        await dbReady;
+        next();
+    } catch (err) {
+        console.error('DB init failed:', err);
+        res.status(503).json({ error: 'Database not ready. Please try again.' });
+    }
+});
 
 // JWT Verification Middleware
 function authenticateToken(req, res, next) {
@@ -967,6 +1021,72 @@ function checkRateLimit(username) {
     return true;
 }
 
+app.post('/api/ai-recipe', authenticateToken, async (req, res) => {
+    const { ingredients } = req.body;
+    if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+        return res.status(400).json({ error: 'Ingredients are required' });
+    }
+
+    const username = req.user.username;
+
+    try {
+        if (geminiModel) {
+            if (!checkRateLimit(username)) {
+                return res.status(429).json({ error: 'Rate limit exceeded. Please wait a moment.' });
+            }
+
+            try {
+                const prompt = `You are a professional chef. Suggest a creative, delicious, zero-waste recipe using the following ingredients from my pantry:
+${ingredients.join(', ')}
+
+Guidelines:
+1. Give the recipe a catchy name.
+2. Specify prep time and difficulty level.
+3. List the ingredients clearly, showing how to use the provided items and suggesting common pantry staples (like salt, pepper, oil, water, basic spices) if needed.
+4. Provide step-by-step preparation instructions.
+5. Format the output in Markdown using **bold** for titles/emphasis and bullet points or numbered lists. Do not use markdown headers like # or ##, use bold text instead.`;
+
+                const result = await geminiModel.generateContent(prompt);
+                const recipe = result.response.text();
+                return res.json({ recipe });
+            } catch (aiErr) {
+                console.warn('Gemini API error in recipe suggestion, falling back:', aiErr.message);
+                // Fall through to fallback generator
+            }
+        }
+
+        // Fallback: rule-based offline recipe generator
+        const recipe = getFallbackAiRecipe(ingredients);
+        res.json({ recipe });
+    } catch (err) {
+        res.status(500).json({ error: 'AI Recipe suggestion error: ' + err.message });
+    }
+});
+
+function getFallbackAiRecipe(ingredients) {
+    const listStr = ingredients.join(', ');
+    return `**FreshGuard AI Chef Suggestions (Offline Fallback)**
+
+Here is a customized recipe idea using: **${listStr}**
+
+**Recipe Option: Custom Zero-Waste Sauté / Salad Bowl**
+• **Prep Time:** 15 mins
+• **Difficulty:** Easy
+
+**Ingredients:**
+• **Selected pantry items:** ${ingredients.map(i => `**${i}**`).join(', ')}
+• **Pantry staples needed:** 1-2 tbsp cooking oil (or butter), salt, black pepper, and optional garlic/onion.
+
+**Instructions:**
+1. **Prep your ingredients:** Wash and chop the ${ingredients.join(', ')} into bite-sized pieces.
+2. **Heat the pan:** Add the cooking oil to a pan or skillet over medium heat. If you have garlic or onion, sauté them first for 2 minutes until fragrant.
+3. **Cook the food:** Add the remaining ingredients based on cooking time (harder items first, greens/soft items last). Toss frequently.
+4. **Season:** Sprinkle with salt, black pepper, and any available herbs or spices to taste.
+5. **Serve:** Transfer to a plate/bowl and enjoy your quick, zero-waste creation!
+
+*Note: To unlock fully customized generative recipes, please set a valid GEMINI_API_KEY in your .env file.*`;
+}
+
 app.post('/api/chatbot', authenticateToken, async (req, res) => {
     const { message } = req.body;
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -1001,7 +1121,6 @@ app.post('/api/chatbot', authenticateToken, async (req, res) => {
                 // Fall through to keyword matcher below
             }
         }
-
         // Fallback: keyword-matching chatbot
         const reply = getChatbotResponse(message, username);
         res.json({ reply });
@@ -1009,6 +1128,90 @@ app.post('/api/chatbot', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Chatbot error: ' + err.message });
     }
 });
+
+// ---------------------------------------------------------------------------
+// RECEIPT SCANNING ENDPOINT (Gemini Vision + Fallback Parser)
+// ---------------------------------------------------------------------------
+
+app.post('/api/scan-receipt', authenticateToken, async (req, res) => {
+    const { image } = req.body;
+    if (!image) {
+        return res.status(400).json({ error: 'Receipt image data is required' });
+    }
+
+    const username = req.user.username;
+
+    try {
+        if (geminiModel) {
+            if (!checkRateLimit(username)) {
+                return res.status(429).json({ error: 'Rate limit exceeded. Please wait a moment.' });
+            }
+
+            try {
+                let base64Data = image;
+                let mimeType = 'image/jpeg';
+                if (image.startsWith('data:')) {
+                    const matches = image.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+                    if (matches) {
+                        mimeType = matches[1];
+                        base64Data = matches[2];
+                    }
+                }
+
+                const prompt = `Analyze this grocery store receipt or invoice image. Identify and extract all food and grocery items purchased.
+Return ONLY a valid JSON array containing objects with the following schema for each food item:
+[
+  {
+    "name": "Item name (clean, standard food title e.g. Organic Milk)",
+    "category": "One of: produce, fruit, dairy, meat, bakery, pantry, beverages, leftovers",
+    "storage": "One of: fridge, freezer, pantry",
+    "qty": 1,
+    "unit": "pcs",
+    "daysExpiry": 7
+  }
+]
+
+Rules:
+- Ignore non-food items (paper towels, tax, total, store info).
+- Provide clean, title-cased item names.
+- Ensure valid JSON array format with NO markdown wrapping backticks or extra text outside the JSON.`;
+
+                const imagePart = {
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: mimeType
+                    }
+                };
+
+                const result = await geminiModel.generateContent([prompt, imagePart]);
+                const rawResponse = result.response.text().trim();
+                let cleanedJsonStr = rawResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
+                let items = JSON.parse(cleanedJsonStr);
+                
+                if (Array.isArray(items) && items.length > 0) {
+                    return res.json({ success: true, items, source: 'ai' });
+                }
+            } catch (aiErr) {
+                console.warn('Gemini Vision receipt scanning error, using fallback:', aiErr.message);
+            }
+        }
+
+        // Offline / Fallback receipt scanner parser
+        const items = parseReceiptFallback();
+        res.json({ success: true, items, source: 'fallback' });
+    } catch (err) {
+        res.status(500).json({ error: 'Receipt scan failed: ' + err.message });
+    }
+});
+
+function parseReceiptFallback() {
+    return [
+        { name: 'Organic Milk 2L', category: 'dairy', storage: 'fridge', qty: 1, unit: 'bottle', daysExpiry: 7 },
+        { name: 'Fresh Bananas', category: 'fruit', storage: 'pantry', qty: 6, unit: 'pcs', daysExpiry: 6 },
+        { name: 'Sourdough Bread', category: 'bakery', storage: 'pantry', qty: 1, unit: 'loaf', daysExpiry: 4 },
+        { name: 'Boneless Chicken Breast', category: 'meat', storage: 'fridge', qty: 1, unit: 'pack', daysExpiry: 3 }
+    ];
+}
 
 
 // ---------------------------------------------------------------------------

@@ -492,6 +492,12 @@
                     <p id="current-date-display"></p>
                 </div>
                 <div class="header-actions">
+                    <button class="btn btn-secondary" id="btn-voice-assistant-trigger" title="Voice Assistant & Commands">
+                        <i class="fa-solid fa-microphone"></i> Voice Assistant
+                    </button>
+                    <button class="btn btn-secondary" id="btn-scan-receipt-trigger" title="Scan Grocery Receipt">
+                        <i class="fa-solid fa-receipt"></i> Scan Receipt
+                    </button>
                     <button class="btn btn-primary" id="btn-add-food-trigger">
                         <i class="fa-solid fa-plus"></i> Add Item
                     </button>
@@ -589,9 +595,10 @@
                     <div class="select-filters" style="display:none;">
                         <select id="category-filter-select">
                             <option value="all" selected>All Categories</option>
+                            <option value="produce">Vegetables</option>
+                            <option value="fruit">Fruit</option>
                             <option value="dairy">Dairy</option>
                             <option value="meat">Meat &amp; Seafood</option>
-                            <option value="produce">Fruits &amp; Veggies</option>
                             <option value="bakery">Bakery</option>
                             <option value="pantry">Pantry Staples</option>
                             <option value="beverages">Beverages</option>
@@ -682,7 +689,8 @@
                                     <label class="floating-label">CATEGORY</label>
                                     <div class="select-with-arrow">
                                         <select id="track-category">
-                                            <option value="produce" selected>Produce</option>
+                                            <option value="produce" selected>Vegetables</option>
+                                            <option value="fruit">Fruit</option>
                                             <option value="dairy">Dairy</option>
                                             <option value="meat">Meat &amp; Seafood</option>
                                             <option value="bakery">Bakery</option>
@@ -1019,7 +1027,8 @@
                     <div class="form-group">
                         <label for="food-category">Category</label>
                         <select id="food-category">
-                            <option value="produce">Fruits &amp; Veggies</option>
+                            <option value="produce">Vegetables</option>
+                            <option value="fruit">Fruit</option>
                             <option value="dairy">Dairy</option>
                             <option value="meat">Meat &amp; Seafood</option>
                             <option value="bakery">Bakery</option>
@@ -1102,6 +1111,157 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal: Voice Assistant & Speech Commands -->
+    <div class="modal" id="modal-voice-assistant" style="display:none; z-index:1200;">
+        <div class="modal-overlay" id="voice-assistant-overlay"></div>
+        <div class="modal-content voice-modal-card">
+            <header class="modal-header">
+                <div class="voice-header-title">
+                    <i class="fa-solid fa-microphone voice-mic-header-icon"></i>
+                    <h3>FreshGuard Voice Assistant</h3>
+                </div>
+                <button class="close-btn" id="btn-close-voice-modal"><i class="fa-solid fa-xmark"></i></button>
+            </header>
+            <div class="voice-modal-body">
+                <!-- Visualizer Rings & Mic Icon -->
+                <div class="voice-visualizer-container">
+                    <div class="voice-pulse-ring ring-1"></div>
+                    <div class="voice-pulse-ring ring-2"></div>
+                    <button class="voice-mic-main-btn" id="btn-voice-mic-toggle" title="Toggle Voice Recognition">
+                        <i class="fa-solid fa-microphone" id="voice-main-mic-icon"></i>
+                    </button>
+                </div>
+                <div class="voice-status-badge" id="voice-status-badge">
+                    <span class="dot-indicator pulse"></span> <span id="voice-status-text">Ready &bull; Click microphone to speak</span>
+                </div>
+
+                <!-- Sound Wave Visualizer Bars -->
+                <div class="voice-wave-visualizer" id="voice-wave-bars">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <!-- Live Transcript Display -->
+                <div class="voice-transcript-box" id="voice-transcript-box">
+                    <p class="voice-transcript-text" id="voice-transcript-text">"Try saying: Add 2 liters of milk expiring in 5 days to fridge"</p>
+                </div>
+
+                <!-- Action Feedback Box -->
+                <div class="voice-action-feedback" id="voice-action-feedback" style="display:none;">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span id="voice-action-text">Command executed successfully</span>
+                </div>
+
+                <!-- Example Command Chips -->
+                <div class="voice-commands-help">
+                    <span class="help-title"><i class="fa-solid fa-lightbulb"></i> Try Voice Commands:</span>
+                    <div class="voice-chip-list">
+                        <button type="button" class="voice-chip-btn" data-cmd="Add 2 liters of milk expiring in 7 days to fridge">
+                            <i class="fa-solid fa-plus"></i> "Add 2 liters of milk expiring in 7 days"
+                        </button>
+                        <button type="button" class="voice-chip-btn" data-cmd="Search bananas">
+                            <i class="fa-solid fa-magnifying-glass"></i> "Search bananas"
+                        </button>
+                        <button type="button" class="voice-chip-btn" data-cmd="Go to recipes">
+                            <i class="fa-solid fa-compass"></i> "Go to recipes"
+                        </button>
+                        <button type="button" class="voice-chip-btn" data-cmd="Show expiring items">
+                            <i class="fa-solid fa-clock"></i> "Show expiring items"
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-voice-cancel">Done</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Modal: AI Receipt Scanner & Batch Review -->
+    <div class="modal" id="modal-scan-receipt" style="display:none; z-index:1200;">
+        <div class="modal-overlay" id="receipt-modal-overlay"></div>
+        <div class="modal-content receipt-modal-card">
+            <header class="modal-header">
+                <div class="receipt-header-title">
+                    <i class="fa-solid fa-receipt receipt-header-icon"></i>
+                    <div>
+                        <h3>AI Grocery Receipt Scanner</h3>
+                        <p class="modal-subtitle">Upload or capture a photo of your receipt to extract food items automatically.</p>
+                    </div>
+                </div>
+                <button class="close-btn" id="btn-close-receipt-modal"><i class="fa-solid fa-xmark"></i></button>
+            </header>
+
+            <div class="receipt-modal-body">
+                <!-- Upload Drop Zone (Step 1) -->
+                <div class="receipt-upload-step" id="receipt-step-upload">
+                    <label for="receipt-file-input" class="receipt-dropzone" id="receipt-dropzone">
+                        <div class="receipt-dropzone-content">
+                            <div class="receipt-icon-circle">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <h4>Upload or Snap Receipt Photo</h4>
+                            <p>Drag &amp; drop your grocery receipt image here, or click to choose a file</p>
+                            <div class="receipt-upload-btns">
+                                <span class="btn btn-primary btn-sm"><i class="fa-solid fa-folder-open"></i> Browse Files</span>
+                                <span class="btn btn-secondary btn-sm"><i class="fa-solid fa-camera"></i> Camera</span>
+                            </div>
+                        </div>
+                        <input type="file" id="receipt-file-input" accept="image/*" capture="environment" style="display:none;">
+                    </label>
+                </div>
+
+                <!-- Scanning / Preview Screen (Step 2) -->
+                <div class="receipt-scanning-step" id="receipt-step-scanning" style="display:none;">
+                    <div class="receipt-preview-container">
+                        <img id="receipt-img-preview" src="" alt="Receipt Preview">
+                        <div class="scan-laser-line"></div>
+                    </div>
+                    <div class="receipt-scan-status">
+                        <div class="receipt-spinner"></div>
+                        <h4>AI is Analyzing Receipt...</h4>
+                        <p>Reading items, quantities, categories, and shelf life estimates</p>
+                    </div>
+                </div>
+
+                <!-- Extracted Items Review Table (Step 3) -->
+                <div class="receipt-review-step" id="receipt-step-review" style="display:none;">
+                    <div class="review-header-bar">
+                        <h4><i class="fa-solid fa-list-check"></i> Extracted Items (<span id="receipt-items-count">0</span>)</h4>
+                        <span class="badge badge-success"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Parsed</span>
+                    </div>
+                    <p class="review-desc">Review and adjust item details before adding them to your pantry grid.</p>
+                    
+                    <div class="receipt-table-wrapper">
+                        <table class="receipt-review-table">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="receipt-check-all" checked></th>
+                                    <th>Food Item</th>
+                                    <th>Category</th>
+                                    <th>Storage</th>
+                                    <th>Qty</th>
+                                    <th>Unit</th>
+                                    <th>Expiration Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="receipt-review-table-body">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="modal-footer receipt-modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-receipt-cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn-receipt-save-all" style="display:none;">
+                    <i class="fa-solid fa-box-archive"></i> Add Checked Items to Pantry (<span id="receipt-save-count">0</span>)
+                </button>
+            </footer>
         </div>
     </div>
 
