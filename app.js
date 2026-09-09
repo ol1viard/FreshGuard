@@ -1046,8 +1046,8 @@ function bindAppEvents() {
     });
 
     // Recipes
-    $('btn-find-recipes').addEventListener('click', matchRecipes);
-    $('btn-generate-ai-recipe').addEventListener('click', generateAiRecipe);
+    const btnFind = $('btn-find-recipes');
+    if (btnFind) btnFind.addEventListener('click', generateAiRecipe);
 
     // History
     $('btn-clear-history').addEventListener('click', clearHistory);
@@ -1951,11 +1951,9 @@ async function generateAiRecipe() {
     const originalCount = countEl.textContent;
     countEl.textContent = 'Generating...';
     
-    // Disable buttons during generation to prevent double clicks
+    // Disable button during generation to prevent double clicks
     const btnFind = $('btn-find-recipes');
-    const btnGen = $('btn-generate-ai-recipe');
     if (btnFind) btnFind.disabled = true;
-    if (btnGen) btnGen.disabled = true;
 
     // Show AI loading state
     grid.innerHTML = `
@@ -2003,7 +2001,6 @@ async function generateAiRecipe() {
         matchRecipes();
     } finally {
         if (btnFind) btnFind.disabled = false;
-        if (btnGen) btnGen.disabled = false;
     }
 }
 

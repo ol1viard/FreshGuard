@@ -1065,26 +1065,90 @@ Guidelines:
 
 function getFallbackAiRecipe(ingredients) {
     const listStr = ingredients.join(', ');
-    return `**FreshGuard AI Chef Suggestions (Offline Fallback)**
+    const lowerList = ingredients.map(i => i.toLowerCase()).join(' ');
 
-Here is a customized recipe idea using: **${listStr}**
+    const isFruit = /\b(strawberry|strawberries|banana|bananas|apple|apples|berry|berries|orange|lemon|lime|fruit|grape|grapes|peach|mango)\b/.test(lowerList);
+    const isMeat = /\b(chicken|beef|pork|meat|salmon|fish|steak|shrimp|turkey|tuna)\b/.test(lowerList);
+    const isDairy = /\b(milk|yogurt|yoghurt|cheese|butter|cream|egg|eggs)\b/.test(lowerList);
+    const isBakery = /\b(bread|sourdough|toast|baguette|croissant)\b/.test(lowerList);
 
-**Recipe Option: Custom Zero-Waste Sauté / Salad Bowl**
-• **Prep Time:** 15 mins
+    if (isFruit) {
+        return `**FreshGuard AI Chef Suggestions**
+
+Here is a delicious recipe idea for your selected fruit: **${listStr}**
+
+**Recipe: Creamy Berry & Fruit Parfait Bowl**
+• **Prep Time:** 5 mins
 • **Difficulty:** Easy
 
 **Ingredients:**
-• **Selected pantry items:** ${ingredients.map(i => `**${i}**`).join(', ')}
-• **Pantry staples needed:** 1-2 tbsp cooking oil (or butter), salt, black pepper, and optional garlic/onion.
+• **Selected Fruit:** ${ingredients.map(i => `**${i}**`).join(', ')}
+• **Pantry Staples Needed:** 1 cup Greek yogurt (or milk), 1-2 tbsp honey or maple syrup, optional nuts, chia seeds, or oats.
 
 **Instructions:**
-1. **Prep your ingredients:** Wash and chop the ${ingredients.join(', ')} into bite-sized pieces.
-2. **Heat the pan:** Add the cooking oil to a pan or skillet over medium heat. If you have garlic or onion, sauté them first for 2 minutes until fragrant.
-3. **Cook the food:** Add the remaining ingredients based on cooking time (harder items first, greens/soft items last). Toss frequently.
-4. **Season:** Sprinkle with salt, black pepper, and any available herbs or spices to taste.
-5. **Serve:** Transfer to a plate/bowl and enjoy your quick, zero-waste creation!
+1. **Prep the fruit:** Wash and slice your ${listStr} into bite-sized pieces.
+2. **Layer the bowl:** Add half of the Greek yogurt (or milk/oats) into a bowl or tall glass.
+3. **Add fruit & sweeten:** Add a generous layer of sliced ${listStr}, then drizzle with honey or maple syrup.
+4. **Garnish & Serve:** Top with remaining yogurt, nuts, or chia seeds. Enjoy fresh and cold!`;
+    }
 
-*Note: To unlock fully customized generative recipes, please set a valid GEMINI_API_KEY in your .env file.*`;
+    if (isMeat) {
+        return `**FreshGuard AI Chef Suggestions**
+
+Here is a savory recipe idea using: **${listStr}**
+
+**Recipe: Garlic Herb Skillet Delight**
+• **Prep Time:** 15 mins
+• **Difficulty:** Easy / Medium
+
+**Ingredients:**
+• **Selected Meat/Fish:** ${ingredients.map(i => `**${i}**`).join(', ')}
+• **Pantry Staples Needed:** 1-2 tbsp olive oil (or butter), 2 cloves minced garlic, salt, black pepper, and lemon juice or herbs.
+
+**Instructions:**
+1. **Prep & Season:** Pat the ${listStr} dry and season generously with salt, black pepper, and herbs.
+2. **Sear in Pan:** Heat olive oil in a skillet over medium-high heat. Add garlic and cook for 30 seconds until fragrant.
+3. **Cook to perfection:** Add the ${listStr} and cook until golden brown and cooked through.
+4. **Finish & Serve:** Squeeze fresh lemon juice on top and serve hot!`;
+    }
+
+    if (isBakery) {
+        return `**FreshGuard AI Chef Suggestions**
+
+Here is a tasty zero-waste recipe using: **${listStr}**
+
+**Recipe: Fluffy Golden French Toast or Garlic Crostini**
+• **Prep Time:** 10 mins
+• **Difficulty:** Easy
+
+**Ingredients:**
+• **Selected Bakery Items:** ${ingredients.map(i => `**${i}**`).join(', ')}
+• **Pantry Staples Needed:** 1-2 eggs, 1/4 cup milk (or butter & garlic for savory), cinnamon or sugar.
+
+**Instructions:**
+1. **Whisk & Dip:** Whisk eggs, milk, and a pinch of cinnamon in a wide dish. Dip sliced ${listStr} until evenly coated.
+2. **Cook on Skillet:** Melt butter on a skillet over medium heat. Fry sliced bread for 2-3 minutes per side until golden brown.
+3. **Serve:** Drizzle with syrup or honey and serve warm!`;
+    }
+
+    // Default Veggies / General Pantry
+    return `**FreshGuard AI Chef Suggestions**
+
+Here is a zero-waste recipe idea using: **${listStr}**
+
+**Recipe: Farmhouse Veggie & Pantry Stir-Fry**
+• **Prep Time:** 12 mins
+• **Difficulty:** Easy
+
+**Ingredients:**
+• **Selected Pantry Items:** ${ingredients.map(i => `**${i}**`).join(', ')}
+• **Pantry Staples Needed:** 1 tbsp cooking oil, 1 clove garlic or onion, salt, black pepper, and soy sauce.
+
+**Instructions:**
+1. **Prep ingredients:** Wash and slice ${listStr} into uniform pieces.
+2. **Heat skillet:** Sauté minced garlic or onion in oil until golden and fragrant.
+3. **Stir-fry:** Add ${listStr} to the skillet over medium-high heat. Toss for 5-7 minutes until tender-crisp.
+4. **Season & Enjoy:** Add soy sauce, salt, and pepper to taste. Serve hot over rice or noodles!`;
 }
 
 app.post('/api/chatbot', authenticateToken, async (req, res) => {
